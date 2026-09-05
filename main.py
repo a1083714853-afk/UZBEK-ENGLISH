@@ -81,8 +81,7 @@ grammar_rules = {
         "🟠 <b>5. Past Simple (O'tgan oddiy zamon)</b>\n\n"
         "<b>Qachon ishlatiladi?</b> O'tgan zamonda aniq bir vaqtda sodir bo'lgan va tugagan harakatlar uchun.\n"
         "<b>Formulasi:</b>\n"
-        "• Darak gap: Ega + V2 (no
-        to'g'ri fe'llarning 2-shakli yoki -ed qo'shimchasi)\n"
+        "• Darak gap: Ega + V2 (noto'g'ri fe'llarning 2-shakli yoki -ed qo'shimchasi)\n"
         "• So'roq gap: Did + Ega + V1?\n"
         "• Inkor gap: Did not (didn't) + V1\n\n"
         "<i>Misollar:</i>\n"
@@ -168,8 +167,67 @@ grammar_rules = {
 # --- 2. RENDER UCHUN FLASK SERVERI ---
 app = Flask('')
 
-
 @app.route('/')
-def
-alive()
-    bot.infinity_polling()
+def home():
+    return "Bot ishlayapti!"
+
+def run():
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
+# --- 3. BOT BUYRUQLARI ---
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    bot.send_message(
+        message.chat.id,
+        "Assalomu alaykum! 🌟 Ingliz tili botiga xush kelibsiz.\n\n"
+        "🔍 So'z yoki matn yozing:\n"
+        "• O'zbekcha ➔ Inglizchaga 🇬🇧\n"
+        "• Inglizcha ➔ O'zbekchaga 🇺🇿\n\n"
+        "📖 12 ta zamon va qoidalar uchun /tenses ni bosing.",
+        parse_mode="HTML"
+    )
+
+@bot.message_handler(commands=['tenses', 'grammar'])
+def send_tenses_menu(message):
+    bot.send_message(message.chat.id, grammar_rules["tenses_menu"], parse_mode="HTML")
+
+for cmd in ["present_simple", "present_continuous", "present_perfect", "present_perfect_continuous",
+            "past_simple", "past_continuous", "past_perfect", "past_perfect_continuous",
+            "future_simple", "future_continuous", "future_perfect", "future_perfect_continuous", "pronouns"]:
+    @bot.message_handler(commands=[cmd])
+    def handle_tenses(message, c=cmd):
+        bot.send_message(message.chat.id, grammar_rules[c], parse_mode="HTML")
+
+# --- 4. MATNNI AVTOMATIK TARJIMA QILISH ---
+@bot.message_handler(func=lambda message: True)
+def translate_text(message):
+    user_text = message.text.strip()
+
+    try:
+        # Googletrans yordamida avtomatik aniqlash va tarjima
+        # Agar matn inglizcha bo'lsa o'zbekchaga, aks holda inglizchaga tarjima qiladi
+        detected = translator.detect(user_text)
+        if detected.lang == 'uz':
+            translation = translator.translate(user_text, src='uz', dest='en')
+            target_lang = "🇬🇧 Inglizcha"
+        else:
+            translation = translator.translate(user_text, src='en', dest='uz')
+            target_lang = "🇺🇿 O'zbekcha"
+
+        bot.reply_to(
+            message,
+            f"🌐 <b>Tarjima ({target_lang}):</b>\n<code>{translation.text}</code>",
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        bot.reply_to(message, f"❌ Tarjima qilishda xatolik yuz berdi.")
+
+# --- 5. BOTNI ISHGA TUSHIRISH ---
+if __name__ == "__main__":
+    keep_alive()
+    bot.infinity_polling(none_stop=True)

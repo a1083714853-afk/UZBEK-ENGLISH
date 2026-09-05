@@ -1,5 +1,4 @@
 aiogram
 flask
 requests
-pyTelegramBotAPI
 deep-translator

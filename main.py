@@ -4,7 +4,7 @@ from threading import Thread
 import telebot
 from deep_translator import GoogleTranslator
 
-TOKEN = "8988660751:AAEVxSose38VxX6v0XhjajzbJEjejre50Ps"
+TOKEN = "8796424315:AAHczcI35dIHWGraD2AXYntz_g1RkwrsjLE"
 bot = telebot.TeleBot(TOKEN)
 
 # --- 1. 12 TA ZAMON VA GRAMMATIKA QOIDALARI BAZASI ---

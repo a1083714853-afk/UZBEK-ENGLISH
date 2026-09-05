@@ -2,11 +2,10 @@ import os
 from flask import Flask
 from threading import Thread
 import telebot
-from googletrans import Translator
+import requests
 
 TOKEN = "8988660751:AAEVxSose38VxX6v0XhjajzbJEjejre50Ps"
 bot = telebot.TeleBot(TOKEN)
-translator = Translator()
 
 # --- 1. 12 TA ZAMON VA GRAMMATIKA QOIDALARI BAZASI ---
 grammar_rules = {
@@ -209,25 +208,33 @@ def translate_text(message):
     user_text = message.text.strip()
 
     try:
-        # Googletrans yordamida avtomatik aniqlash va tarjima
-        # Agar matn inglizcha bo'lsa o'zbekchaga, aks holda inglizchaga tarjima qiladi
-        detected = translator.detect(user_text)
-        if detected.lang == 'uz':
-            translation = translator.translate(user_text, src='uz', dest='en')
-            target_lang = "🇬🇧 Inglizcha"
-        else:
-            translation = translator.translate(user_text, src='en', dest='uz')
+        # Inglizcha harflar borligini tekshirish orqali tilni aniqlash
+        english_count = sum(1 for c in user_text if c.lower() in 'abcdefghijklmnopqrstuvwxyz')
+        total_alpha = sum(1 for c in user_text if c.isalpha())
+
+        if total_alpha > 0 and (english_count / total_alpha > 0.4):
+            lang_pair = "en|uz"
             target_lang = "🇺🇿 O'zbekcha"
+        else:
+            lang_pair = "uz|en"
+            target_lang = "🇬🇧 Inglizcha"
+
+        # MyMemory API orqali tarjima qilish
+        url = f"https://api.mymemory.translated.net/get?q={requests.utils.quote(user_text)}&langpair={lang_pair}"
+        response = requests.get(url)
+        data = response.json()
+        
+        translation = data['responseData']['translatedText']
 
         bot.reply_to(
             message,
-            f"🌐 <b>Tarjima ({target_lang}):</b>\n<code>{translation.text}</code>",
+            f"🌐 <b>Tarjima ({target_lang}):</b>\n<code>{translation}</code>",
             parse_mode="HTML"
         )
     except Exception as e:
         bot.reply_to(message, f"❌ Tarjima qilishda xatolik yuz berdi.")
 
-# --- 5. BOTNI ISHGA TUSHIRISH ---
+# --- 5. BOTNI ISHGA TUSHIRish ---
 if __name__ == "__main__":
     keep_alive()
     bot.infinity_polling(none_stop=True)

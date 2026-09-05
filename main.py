@@ -185,7 +185,9 @@ def send_welcome(message):
     bot.send_message(
         message.chat.id,
         "Assalomu alaykum! 🌟 Ingliz tili tarjima va grammatika botiga xush kelibsiz.\n\n"
-        "🔍 Istalgan so'z yoki matnni yozing — Google Translate orqali tarjima qilaman.\n"
+        "🔍 Istalgan so'z yoki matnni yozing:\n"
+        "• O'zbekcha yozsangiz ➔ Inglizchaga tarjima qilaman 🇬🇧\n"
+        "• Inglizcha yozsangiz ➔ O'zbekchaga tarjima qilaman 🇺🇿\n\n"
         "📖 12 ta zamon va qoidalarni ko'rish uchun /tenses buyrug'ini yuboring.",
         parse_mode="HTML"
     )
@@ -233,21 +235,37 @@ def fut_perf_cont(message): bot.send_message(message.chat.id, grammar_rules["fut
 @bot.message_handler(commands=['pronouns'])
 def pronouns(message): bot.send_message(message.chat.id, grammar_rules["pronouns"], parse_mode="HTML")
 
-# --- 4. GOOGLE TRANSLATE ORQALI AVTOMATIK TARJIMA QILISH ---
+# --- 4. ANIQLASHTIRILGAN TARJIMA QILISH ---
 @bot.message_handler(func=lambda message: True)
 def translate_text(message):
     user_text = message.text.strip()
 
     try:
-        if any(char in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' for char in user_text):
+        # Matn tarkibida o'zbek tiliga xos harflar (o', g', sh, ch) yoki
+        # asosan o'zbekcha so'zlar borligini aniqlaymiz
+        uzbek_chars = "oʻgʻshchOʻGʻShCh"
+        has_uzbek_specific = any(c in uzbek_chars for c in user_text)
+        
+        # Inglizcha harflar miqdorini tekshiramiz
+        english_alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        english_count = sum(1 for c in user_text if c in english_alphabet)
+        total_alpha = sum(1 for c in user_text if c.isalpha())
+
+        # Agar kiritilgan harflarning ko'p qismi inglizcha bo'lsa -> O'zbekchaga tarjima qilamiz
+        if total_alpha > 0 and (english_count / total_alpha > 0.5) and not has_uzbek_specific:
             translation = GoogleTranslator(source='en', target='uz').translate(user_text)
             target_lang = "🇺🇿 O'zbekcha"
         else:
+            # Aks holda (o'zbekcha yozilsa) -> Inglizchaga tarjima qilamiz
             translation = GoogleTranslator(source='uz', target='en').translate(user_text)
             target_lang = "🇬🇧 Inglizcha"
 
-        if not translation:
-            translation = user_text # Agar tarjima bo'sh qaytsa o'zini chiqaramiz
+        # Agar tarjima natijasi bo'sh yoki aynan o'zi bo'lib qolsa, majburiy tarjima qilamiz
+        if not translation or translation.lower() == user_text.lower():
+            if target_lang == "🇺🇿 O'zbekcha":
+                translation = GoogleTranslator(source='auto', target='uz').translate(user_text)
+            else:
+                translation = GoogleTranslator(source='auto', target='en').translate(user_text)
 
         bot.reply_to(
             message,
@@ -255,7 +273,6 @@ def translate_text(message):
             parse_mode="HTML"
         )
     except Exception as e:
-        # Xatolik chiqsa ham bot qulab tushmaydi, foydalanuvchiga xabar beradi
         bot.reply_to(message, f"🌐 <b>Google Translate:</b>\n<code>{user_text}</code>", parse_mode="HTML")
 
 # --- 5. BOTNI ISHGA TUSHIRISH ---

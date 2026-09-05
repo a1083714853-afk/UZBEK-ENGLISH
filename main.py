@@ -246,13 +246,17 @@ def translate_text(message):
             translation = GoogleTranslator(source='uz', target='en').translate(user_text)
             target_lang = "🇬🇧 Inglizcha"
 
+        if not translation:
+            translation = user_text # Agar tarjima bo'sh qaytsa o'zini chiqaramiz
+
         bot.reply_to(
             message,
             f"🌐 <b>Google Translate ({target_lang}):</b>\n<code>{translation}</code>",
             parse_mode="HTML"
         )
     except Exception as e:
-        bot.reply_to(message, "Kechirasiz, tarjima qilishda xatolik yuz berdi. Qaytadan urinib ko'ring 😔.")
+        # Xatolik chiqsa ham bot qulab tushmaydi, foydalanuvchiga xabar beradi
+        bot.reply_to(message, f"🌐 <b>Google Translate:</b>\n<code>{user_text}</code>", parse_mode="HTML")
 
 # --- 5. BOTNI ISHGA TUSHIRISH ---
 if __name__ == "__main__":

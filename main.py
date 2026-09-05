@@ -3,9 +3,17 @@ from flask import Flask
 from threading import Thread
 import telebot
 import requests
+import easyocr
+from PIL import Image
 
 TOKEN = "8988660751:AAEVxSose38VxX6v0XhjajzbJEjejre50Ps"
 bot = telebot.TeleBot(TOKEN)
+
+# Easyocr ni yuklab olish (Ingliz va O'zbek tillari uchun)
+# gpu=False serverlarda xatolik bermasligi uchun qo'yilgan
+print("EasyOCR yuklanmoqda, iltimos kuting...")
+reader = easyocr.Reader(['en', 'uz'], gpu=False)
+print("EasyOCR tayyor!")
 
 # --- 1. 12 TA ZAMON VA GRAMMATIKA QOIDALARI BAZASI ---
 grammar_rules = {
@@ -65,10 +73,10 @@ def keep_alive():
 def send_welcome(message):
     bot.send_message(
         message.chat.id,
-        "Assalomu alaykum! 🌟 Ingliz tili tarjima botiga xush kelibsiz.\n\n"
-        "🔍 So'z yozing:\n"
-        "• O'zbekcha ➔ Inglizchaga 🇬🇧\n"
-        "• Inglizcha ➔ O'zbekchaga 🇺🇿\n\n"
+        "Assalomu alaykum! 🌟 Ingliz tili va Manga tarjima botiga xush kelibsiz.\n\n"
+        "🔍 Nima qila olaman?\n"
+        "• Matn yozing ➔ Tarjima qiladi 🇬🇧 ⇄ 🇺🇿\n"
+        "• **Manga (rasm) tashlang** ➔ Rasmdagi inglizcha matnlarni o'qib, o'zbekchaga tarjima qiladi 🖼️\n\n"
         "📖 Zamonlar uchun /tenses ni bosing.",
         parse_mode="HTML"
     )
@@ -84,7 +92,53 @@ for cmd in ["present_simple", "present_continuous", "present_perfect", "present_
     def handle_tenses(message, c=cmd):
         bot.send_message(message.chat.id, grammar_rules[c], parse_mode="HTML")
 
-# --- 4. 100% IShonchli va blOKLANMAYDIGAN TARJIMA ---
+# --- 4. MANGA VA RASMLARNI TARJIMA QILISH (FOTO) ---
+@bot.message_handler(content_types=['photo'])
+def handle_manga_photo(message):
+    try:
+        msg = bot.reply_to(message, "🖼️ Manga rasmi qabul qilindi. Matnlar o'qilmoqda, biroz kuting...")
+        
+        # Rasmni yuklab olish
+        file_info = bot.get_file(message.photo[-1].file_id)
+        downloaded_file = bot.download_file(file_info.file_path)
+        
+        image_path = "manga_temp.jpg"
+        with open(image_path, 'wb') as new_file:
+            new_file.write(downloaded_file)
+            
+        # EasyOCR orqali matnlarni o'qish
+        natijalar = reader.readtext(image_path)
+        
+        if not natijalar:
+            bot.edit_message_text("❌ Rasmdan hech qanday matn topilmadi!", message.chat.id, msg.message_id)
+            if os.path.exists(image_path):
+                os.remove(image_path)
+            return
+
+        response_text = "🌐 <b>Manga Tarjimasi (Inglizcha ➔ O'zbekcha):</b>\n\n"
+        
+        for i, (koordinata, matn, ishonchlilik) in enumerate(natijalar, 1):
+            # MyMemory API orqali tarjima qilish
+            url = f"https://api.mymemory.translated.net/get?q={requests.utils.quote(matn)}&langpair=en|uz"
+            res = requests.get(url).json()
+            translation = res.get('responseData', {}).get('translatedText', matn)
+            
+            response_text += f"<b>{i}. Asl:</b> {matn}\n<b>   Tarjima:</b> {translation}\n\n"
+
+        # Vaqtinchalik faylni o'chirish
+        if os.path.exists(image_path):
+            os.remove(image_path)
+            
+        # Xabar uzunligi Telegram limitidan oshib ketmasligi uchun tekshirish
+        if len(response_text) > 4096:
+            response_text = response_text[:4090] + "..."
+            
+        bot.edit_message_text(response_text, message.chat.id, msg.message_id, parse_mode="HTML")
+        
+    except Exception as e:
+        bot.reply_to(message, f"❌ Rasmga ishlov berishda xatolik yuz berdi: {str(e)}")
+
+# --- 5. MATNNI TARJIMA QILISH ---
 @bot.message_handler(func=lambda message: True)
 def translate_text(message):
     user_text = message.text.strip()
@@ -100,7 +154,7 @@ def translate_text(message):
             lang_pair = "uz|en"
             target_lang = "🇬🇧 Inglizcha"
 
-        # MyMemory bepul tarjima API (Hech qachon bloklamaydi)
+        # MyMemory bepul tarjima API
         url = f"https://api.mymemory.translated.net/get?q={requests.utils.quote(user_text)}&langpair={lang_pair}"
         response = requests.get(url)
         data = response.json()
@@ -115,7 +169,7 @@ def translate_text(message):
     except Exception as e:
         bot.reply_to(message, f"❌ Tarjima qilishda xatolik yuz berdi.")
 
-# --- 5. BOTNI ISHGA TUSHIRISH ---
+# --- 6. BOTNI ISHGA TUSHIRISH ---
 if __name__ == "__main__":
     keep_alive()
     bot.infinity_polling(none_stop=True)

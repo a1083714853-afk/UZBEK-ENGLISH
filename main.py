@@ -4,12 +4,8 @@ from threading import Thread
 import telebot
 from deep_translator import GoogleTranslator
 
-# Tarjima qilish uchun:
-translated = GoogleTranslator(source='uz', target='en').translate('kitob')
-
 TOKEN = "8988660751:AAHXs9TWJgdFTULUC_0wxpnq8mxLQEFFku4"
 bot = telebot.TeleBot(TOKEN)
-translator = Translator()
 
 # --- 1. 12 TA ZAMON VA GRAMMATIKA QOIDALARI BAZASI ---
 grammar_rules = {
@@ -170,21 +166,17 @@ grammar_rules = {
 # --- 2. RENDER UCHUN FLASK SERVERI ---
 app = Flask('')
 
-
 @app.route('/')
 def home():
     return "Ingliz tili boti ishlayapti va uyg'oq!"
-
 
 def run():
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
 
-
 def keep_alive():
     t = Thread(target=run)
     t.start()
-
 
 # --- 3. BOT BUYRUQLARI ---
 
@@ -198,68 +190,48 @@ def send_welcome(message):
         parse_mode="HTML"
     )
 
-
-# Asosiy zamonlar menyusi
 @bot.message_handler(commands=['tenses', 'grammar'])
 def send_tenses_menu(message):
     bot.send_message(message.chat.id, grammar_rules["tenses_menu"], parse_mode="HTML")
 
-
-# Har bir zamon uchun alohida buyruqlar
 @bot.message_handler(commands=['present_simple'])
 def p_simple(message): bot.send_message(message.chat.id, grammar_rules["present_simple"], parse_mode="HTML")
-
 
 @bot.message_handler(commands=['present_continuous'])
 def p_cont(message): bot.send_message(message.chat.id, grammar_rules["present_continuous"], parse_mode="HTML")
 
-
 @bot.message_handler(commands=['present_perfect'])
 def p_perf(message): bot.send_message(message.chat.id, grammar_rules["present_perfect"], parse_mode="HTML")
 
-
 @bot.message_handler(commands=['present_perfect_continuous'])
-def p_perf_cont(message): bot.send_message(message.chat.id, grammar_rules["present_perfect_continuous"],
-                                           parse_mode="HTML")
-
+def p_perf_cont(message): bot.send_message(message.chat.id, grammar_rules["present_perfect_continuous"], parse_mode="HTML")
 
 @bot.message_handler(commands=['past_simple'])
 def past_simp(message): bot.send_message(message.chat.id, grammar_rules["past_simple"], parse_mode="HTML")
 
-
 @bot.message_handler(commands=['past_continuous'])
 def past_cont(message): bot.send_message(message.chat.id, grammar_rules["past_continuous"], parse_mode="HTML")
-
 
 @bot.message_handler(commands=['past_perfect'])
 def past_perf(message): bot.send_message(message.chat.id, grammar_rules["past_perfect"], parse_mode="HTML")
 
-
 @bot.message_handler(commands=['past_perfect_continuous'])
-def past_perf_cont(message): bot.send_message(message.chat.id, grammar_rules["past_perfect_continuous"],
-                                              parse_mode="HTML")
-
+def past_perf_cont(message): bot.send_message(message.chat.id, grammar_rules["past_perfect_continuous"], parse_mode="HTML")
 
 @bot.message_handler(commands=['future_simple'])
 def fut_simp(message): bot.send_message(message.chat.id, grammar_rules["future_simple"], parse_mode="HTML")
 
-
 @bot.message_handler(commands=['future_continuous'])
 def fut_cont(message): bot.send_message(message.chat.id, grammar_rules["future_continuous"], parse_mode="HTML")
-
 
 @bot.message_handler(commands=['future_perfect'])
 def fut_perf(message): bot.send_message(message.chat.id, grammar_rules["future_perfect"], parse_mode="HTML")
 
-
 @bot.message_handler(commands=['future_perfect_continuous'])
-def fut_perf_cont(message): bot.send_message(message.chat.id, grammar_rules["future_perfect_continuous"],
-                                             parse_mode="HTML")
-
+def fut_perf_cont(message): bot.send_message(message.chat.id, grammar_rules["future_perfect_continuous"], parse_mode="HTML")
 
 @bot.message_handler(commands=['pronouns'])
 def pronouns(message): bot.send_message(message.chat.id, grammar_rules["pronouns"], parse_mode="HTML")
-
 
 # --- 4. GOOGLE TRANSLATE ORQALI AVTOMATIK TARJIMA QILISH ---
 @bot.message_handler(func=lambda message: True)
@@ -267,23 +239,20 @@ def translate_text(message):
     user_text = message.text.strip()
 
     try:
-        detected = translator.detect(user_text)
-
-        if detected.lang == 'en':
-            translation = translator.translate(user_text, src='en', dest='uz')
+        if any(char in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' for char in user_text):
+            translation = GoogleTranslator(source='en', target='uz').translate(user_text)
             target_lang = "🇺🇿 O'zbekcha"
         else:
-            translation = translator.translate(user_text, dest='en')
+            translation = GoogleTranslator(source='uz', target='en').translate(user_text)
             target_lang = "🇬🇧 Inglizcha"
 
         bot.reply_to(
             message,
-            f"🌐 <b>Google Translate ({target_lang}):</b>\n<code>{translation.text}</code>",
+            f"🌐 <b>Google Translate ({target_lang}):</b>\n<code>{translation}</code>",
             parse_mode="HTML"
         )
     except Exception as e:
         bot.reply_to(message, "Kechirasiz, tarjima qilishda xatolik yuz berdi. Qaytadan urinib ko'ring 😔.")
-
 
 # --- 5. BOTNI ISHGA TUSHIRISH ---
 if __name__ == "__main__":

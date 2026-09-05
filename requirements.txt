@@ -2,7 +2,4 @@ pytelegrambotapi
 flask
 requests
 gunicorn
-easyocr
-pillow
-torch
-torchvision
+googletrans==4.0.0-rc1

@@ -1,4 +1,8 @@
-PyTelegramBotAPI
+pytelegrambotapi
 flask
 requests
 gunicorn
+easyocr
+pillow
+torch
+torchvision

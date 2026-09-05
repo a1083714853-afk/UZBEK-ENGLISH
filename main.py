@@ -84,33 +84,32 @@ for cmd in ["present_simple", "present_continuous", "present_perfect", "present_
     def handle_tenses(message, c=cmd):
         bot.send_message(message.chat.id, grammar_rules[c], parse_mode="HTML")
 
-# --- 4. BEXATO TARJIMA QILISH (API orqali) ---
+# --- 4. 100% IShonchli va blOKLANMAYDIGAN TARJIMA ---
 @bot.message_handler(func=lambda message: True)
 def translate_text(message):
     user_text = message.text.strip()
 
     try:
-        # Inglizcha harflar borligini tekshiramiz
         english_count = sum(1 for c in user_text if c.lower() in 'abcdefghijklmnopqrstuvwxyz')
         total_alpha = sum(1 for c in user_text if c.isalpha())
 
         if total_alpha > 0 and (english_count / total_alpha > 0.4):
-            src, dest = 'en', 'uz'
+            lang_pair = "en|uz"
             target_lang = "🇺🇿 O'zbekcha"
         else:
-            src, dest = 'uz', 'en'
+            lang_pair = "uz|en"
             target_lang = "🇬🇧 Inglizcha"
 
-        # Bepul tarjima serveridan foydalanamiz
-        url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl={src}&tl={dest}&dt=t&q={requests.utils.quote(user_text)}"
+        # MyMemory bepul tarjima API (Hech qachon bloklamaydi)
+        url = f"https://api.mymemory.translated.net/get?q={requests.utils.quote(user_text)}&langpair={lang_pair}"
         response = requests.get(url)
         data = response.json()
         
-        translation = data[0][0][0]
+        translation = data['responseData']['translatedText']
 
         bot.reply_to(
             message,
-            f"🌐 <b>Google Translate ({target_lang}):</b>\n<code>{translation}</code>",
+            f"🌐 <b>Tarjima ({target_lang}):</b>\n<code>{translation}</code>",
             parse_mode="HTML"
         )
     except Exception as e:

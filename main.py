@@ -2,7 +2,10 @@ import os
 from flask import Flask
 from threading import Thread
 import telebot
-from googletrans import Translator
+from deep_translator import GoogleTranslator
+
+# Tarjima qilish uchun:
+translated = GoogleTranslator(source='uz', target='en').translate('kitob')
 
 TOKEN = "8988660751:AAHXs9TWJgdFTULUC_0wxpnq8mxLQEFFku4"
 bot = telebot.TeleBot(TOKEN)

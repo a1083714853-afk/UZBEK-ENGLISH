@@ -2,11 +2,10 @@ import os
 from flask import Flask
 from threading import Thread
 import telebot
-from googletrans import Translator
+import requests
 
 TOKEN = "8988660751:AAHXs9TWJgdFTULUC_0wxpnq8mxLQEFFku4"
 bot = telebot.TeleBot(TOKEN)
-translator = Translator()
 
 # --- 1. 12 TA ZAMON VA GRAMMATIKA QOIDALARI BAZASI ---
 grammar_rules = {
@@ -78,7 +77,6 @@ def send_welcome(message):
 def send_tenses_menu(message):
     bot.send_message(message.chat.id, grammar_rules["tenses_menu"], parse_mode="HTML")
 
-# Qolgan buyruqlar uchun qisqa yo'l
 for cmd in ["present_simple", "present_continuous", "present_perfect", "present_perfect_continuous",
             "past_simple", "past_continuous", "past_perfect", "past_perfect_continuous",
             "future_simple", "future_continuous", "future_perfect", "future_perfect_continuous", "pronouns"]:
@@ -86,24 +84,29 @@ for cmd in ["present_simple", "present_continuous", "present_perfect", "present_
     def handle_tenses(message, c=cmd):
         bot.send_message(message.chat.id, grammar_rules[c], parse_mode="HTML")
 
-# --- 4. ANIQ TARJIMA QILISH QISMI ---
+# --- 4. BEXATO TARJIMA QILISH (API orqali) ---
 @bot.message_handler(func=lambda message: True)
 def translate_text(message):
     user_text = message.text.strip()
 
     try:
-        # Avtomatik tilni aniqlash
-        detected = translator.detect(user_text)
-        lang = detected.lang
+        # Inglizcha harflar borligini tekshiramiz
+        english_count = sum(1 for c in user_text if c.lower() in 'abcdefghijklmnopqrstuvwxyz')
+        total_alpha = sum(1 for c in user_text if c.isalpha())
 
-        # Agar til o'zbekcha (uz) yoki shunga o'xshash bo'lsa -> Inglizchaga tarjima qilamiz
-        if lang == 'uz':
-            translation = translator.translate(user_text, dest='en').text
-            target_lang = "🇬🇧 Inglizcha"
-        else:
-            # Aks holda -> O'zbekchaga tarjima qilamiz
-            translation = translator.translate(user_text, dest='uz').text
+        if total_alpha > 0 and (english_count / total_alpha > 0.4):
+            src, dest = 'en', 'uz'
             target_lang = "🇺🇿 O'zbekcha"
+        else:
+            src, dest = 'uz', 'en'
+            target_lang = "🇬🇧 Inglizcha"
+
+        # Bepul tarjima serveridan foydalanamiz
+        url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl={src}&tl={dest}&dt=t&q={requests.utils.quote(user_text)}"
+        response = requests.get(url)
+        data = response.json()
+        
+        translation = data[0][0][0]
 
         bot.reply_to(
             message,

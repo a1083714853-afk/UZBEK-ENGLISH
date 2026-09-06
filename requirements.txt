@@ -2,3 +2,4 @@ pytelegrambotapi
 flask
 requests
 gunicorn
+googletrans==4.0.0-rc1

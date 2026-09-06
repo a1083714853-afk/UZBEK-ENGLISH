@@ -2,10 +2,11 @@ import os
 from flask import Flask
 from threading import Thread
 import telebot
-import requests
+from googletrans import Translator
 
 TOKEN = "8988660751:AAEVxSose38VxX6v0XhjajzbJEjejre50Ps"
 bot = telebot.TeleBot(TOKEN)
+translator = Translator()
 
 # --- 1. 12 TA ZAMON VA GRAMMATIKA QOIDALARI BAZASI ---
 grammar_rules = {
@@ -166,75 +167,122 @@ grammar_rules = {
 # --- 2. RENDER UCHUN FLASK SERVERI ---
 app = Flask('')
 
+
 @app.route('/')
 def home():
-    return "Bot ishlayapti!"
+    return "Ingliz tili boti ishlayapti va uyg'oq!"
+
 
 def run():
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
 
+
 def keep_alive():
     t = Thread(target=run)
     t.start()
 
+
 # --- 3. BOT BUYRUQLARI ---
+
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     bot.send_message(
         message.chat.id,
-        "Assalomu alaykum! 🌟 Ingliz tili botiga xush kelibsiz.\n\n"
-        "🔍 So'z yoki matn yozing:\n"
-        "• O'zbekcha ➔ Inglizchaga 🇬🇧\n"
-        "• Inglizcha ➔ O'zbekchaga 🇺🇿\n\n"
-        "📖 12 ta zamon va qoidalar uchun /tenses ni bosing.",
+        "Assalomu alaykum! 🌟 Ingliz tili tarjima va grammatika botiga xush kelibsiz.\n\n"
+        "🔍 Istalgan so'z yoki matnni yozing — Google Translate orqali tarjima qilaman.\n"
+        "📖 12 ta zamon va qoidalarni ko'rish uchun /tenses buyrug'ini yuboring.",
         parse_mode="HTML"
     )
 
+
+# Asosiy zamonlar menyusi
 @bot.message_handler(commands=['tenses', 'grammar'])
 def send_tenses_menu(message):
     bot.send_message(message.chat.id, grammar_rules["tenses_menu"], parse_mode="HTML")
 
-for cmd in ["present_simple", "present_continuous", "present_perfect", "present_perfect_continuous",
-            "past_simple", "past_continuous", "past_perfect", "past_perfect_continuous",
-            "future_simple", "future_continuous", "future_perfect", "future_perfect_continuous", "pronouns"]:
-    @bot.message_handler(commands=[cmd])
-    def handle_tenses(message, c=cmd):
-        bot.send_message(message.chat.id, grammar_rules[c], parse_mode="HTML")
 
-# --- 4. MATNNI AVTOMATIK TARJIMA QILISH ---
+# Har bir zamon uchun alohida buyruqlar
+@bot.message_handler(commands=['present_simple'])
+def p_simple(message): bot.send_message(message.chat.id, grammar_rules["present_simple"], parse_mode="HTML")
+
+
+@bot.message_handler(commands=['present_continuous'])
+def p_cont(message): bot.send_message(message.chat.id, grammar_rules["present_continuous"], parse_mode="HTML")
+
+
+@bot.message_handler(commands=['present_perfect'])
+def p_perf(message): bot.send_message(message.chat.id, grammar_rules["present_perfect"], parse_mode="HTML")
+
+
+@bot.message_handler(commands=['present_perfect_continuous'])
+def p_perf_cont(message): bot.send_message(message.chat.id, grammar_rules["present_perfect_continuous"],
+                                           parse_mode="HTML")
+
+
+@bot.message_handler(commands=['past_simple'])
+def past_simp(message): bot.send_message(message.chat.id, grammar_rules["past_simple"], parse_mode="HTML")
+
+
+@bot.message_handler(commands=['past_continuous'])
+def past_cont(message): bot.send_message(message.chat.id, grammar_rules["past_continuous"], parse_mode="HTML")
+
+
+@bot.message_handler(commands=['past_perfect'])
+def past_perf(message): bot.send_message(message.chat.id, grammar_rules["past_perfect"], parse_mode="HTML")
+
+
+@bot.message_handler(commands=['past_perfect_continuous'])
+def past_perf_cont(message): bot.send_message(message.chat.id, grammar_rules["past_perfect_continuous"],
+                                              parse_mode="HTML")
+
+
+@bot.message_handler(commands=['future_simple'])
+def fut_simp(message): bot.send_message(message.chat.id, grammar_rules["future_simple"], parse_mode="HTML")
+
+
+@bot.message_handler(commands=['future_continuous'])
+def fut_cont(message): bot.send_message(message.chat.id, grammar_rules["future_continuous"], parse_mode="HTML")
+
+
+@bot.message_handler(commands=['future_perfect'])
+def fut_perf(message): bot.send_message(message.chat.id, grammar_rules["future_perfect"], parse_mode="HTML")
+
+
+@bot.message_handler(commands=['future_perfect_continuous'])
+def fut_perf_cont(message): bot.send_message(message.chat.id, grammar_rules["future_perfect_continuous"],
+                                             parse_mode="HTML")
+
+
+@bot.message_handler(commands=['pronouns'])
+def pronouns(message): bot.send_message(message.chat.id, grammar_rules["pronouns"], parse_mode="HTML")
+
+
+# --- 4. GOOGLE TRANSLATE ORQALI AVTOMATIK TARJIMA QILISH ---
 @bot.message_handler(func=lambda message: True)
 def translate_text(message):
     user_text = message.text.strip()
 
     try:
-        # Inglizcha harflar borligini tekshirish orqali tilni aniqlash
-        english_count = sum(1 for c in user_text if c.lower() in 'abcdefghijklmnopqrstuvwxyz')
-        total_alpha = sum(1 for c in user_text if c.isalpha())
+        detected = translator.detect(user_text)
 
-        if total_alpha > 0 and (english_count / total_alpha > 0.4):
-            lang_pair = "en|uz"
+        if detected.lang == 'en':
+            translation = translator.translate(user_text, src='en', dest='uz')
             target_lang = "🇺🇿 O'zbekcha"
         else:
-            lang_pair = "uz|en"
+            translation = translator.translate(user_text, dest='en')
             target_lang = "🇬🇧 Inglizcha"
-
-        # MyMemory API orqali tarjima qilish
-        url = f"https://api.mymemory.translated.net/get?q={requests.utils.quote(user_text)}&langpair={lang_pair}"
-        response = requests.get(url)
-        data = response.json()
-        
-        translation = data['responseData']['translatedText']
 
         bot.reply_to(
             message,
-            f"🌐 <b>Tarjima ({target_lang}):</b>\n<code>{translation}</code>",
+            f"🌐 <b>Google Translate ({target_lang}):</b>\n<code>{translation.text}</code>",
             parse_mode="HTML"
         )
     except Exception as e:
-        bot.reply_to(message, f"❌ Tarjima qilishda xatolik yuz berdi.")
+        bot.reply_to(message, "Kechirasiz, tarjima qilishda xatolik yuz berdi. Qaytadan urinib ko'ring 😔.")
 
-# --- 5. BOTNI ISHGA TUSHIRish ---
+
+# --- 5. BOTNI ISHGA TUSHIRISH ---
 if __name__ == "__main__":
     keep_alive()
-    bot.infinity_polling(none_stop=True)
+    bot.infinity_polling()

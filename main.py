@@ -4,7 +4,7 @@ from threading import Thread
 import telebot
 from googletrans import Translator
 
-TOKEN = "8988660751:AAEVxSose38VxX6v0XhjajzbJEjejre50Ps"
+TOKEN = "8988660751:AAGuGlaAppHsVYnazG9KgUumdc6O9KtkyR0"
 bot = telebot.TeleBot(TOKEN)
 translator = Translator()
 
